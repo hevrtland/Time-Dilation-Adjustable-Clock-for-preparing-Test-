@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeDilationAdjustableClock</title>
+<style>
+  body {
+    background-color: #111;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: "Pretendard", sans-serif;
+  }
+  canvas {
+    background-color: #000;
+    border-radius: 50%;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+  }
+  .controls {
+    margin-top: 20px;
+    text-align: center;
+  }
+  input {
+    width: 80px;
+    text-align: center;
+    margin: 5px;
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 4px;
+  }
+  button {
+    background: #444;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #666;
+  }
+</style>
+</head>
+<body>
+<canvas id="clock" width="300" height="300"></canvas>
+
+<div class="controls">
+  <label>Start Time (HH:MM):</label>
+  <input id="startTime" type="time" value="09:00">
+  <label>TD Ratio:</label>
+  <input id="speed" type="number" step="0.1" value="1.2">
+  <button id="startBtn">START</button>
+</div>
+
+<script>
+const canvas = document.getElementById("clock");
+const ctx = canvas.getContext("2d");
+const radius = canvas.height / 2;
+ctx.translate(radius, radius);
+
+let startTime = new Date();
+let speed = 1.0;
+let startRealTime = 0;
+let started = false;
+
+function drawClock() {
+  ctx.clearRect(-radius, -radius, canvas.width, canvas.height);
+  drawFace(ctx, radius);
+  drawNumbers(ctx, radius);
+  drawTime(ctx, radius);
+}
+
+function drawFace(ctx, radius) {
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.95, 0, 2 * Math.PI);
+  ctx.fillStyle = "#000";
+  ctx.fill();
+
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = radius * 0.03;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.05, 0, 2 * Math.PI);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+}
+
+function drawNumbers(ctx, radius) {
+  ctx.font = radius * 0.15 + "px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  for (let num = 1; num <= 12; num++) {
+    const ang = (num * Math.PI) / 6;
+    ctx.rotate(ang);
+    ctx.translate(0, -radius * 0.85);
+    ctx.rotate(-ang);
+    ctx.fillText(num.toString(), 0, 0);
+    ctx.rotate(ang);
+    ctx.translate(0, radius * 0.85);
+    ctx.rotate(-ang);
+  }
+}
+
+function drawTime(ctx, radius) {
+  const nowReal = Date.now();
+  const elapsed = (nowReal - startRealTime) * speed;
+  const nowVirtual = new Date(startTime.getTime() + elapsed);
+
+  let hour = nowVirtual.getHours();
+  let minute = nowVirtual.getMinutes();
+  let second = nowVirtual.getSeconds();
+
+  // hour hand
+  hour = hour % 12;
+  hour = (hour * Math.PI) / 6 +
+         (minute * Math.PI) / (6 * 60) +
+         (second * Math.PI) / (360 * 60);
+  drawHand(ctx, hour, radius * 0.5, radius * 0.07);
+
+  // minute hand
+  minute = (minute * Math.PI) / 30 + (second * Math.PI) / (30 * 60);
+  drawHand(ctx, minute, radius * 0.75, radius * 0.05);
+
+  // second hand
+  second = (second * Math.PI) / 30;
+  drawHand(ctx, second, radius * 0.85, radius * 0.02, "#f33");
+}
+
+function drawHand(ctx, pos, length, width, color = "#fff") {
+  ctx.beginPath();
+  ctx.lineWidth = width;
+  ctx.lineCap = "round";
+  ctx.moveTo(0, 0);
+  ctx.rotate(pos);
+  ctx.strokeStyle = color;
+  ctx.lineTo(0, -length);
+  ctx.stroke();
+  ctx.rotate(-pos);
+}
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  const t = document.getElementById("startTime").value.split(":");
+  const now = new Date();
+  now.setHours(parseInt(t[0]));
+  now.setMinutes(parseInt(t[1]));
+  now.setSeconds(0);
+  startTime = now;
+
+  speed = parseFloat(document.getElementById("speed").value);
+  startRealTime = Date.now();
+  started = true;
+});
+
+function update() {
+  if (started) drawClock();
+  requestAnimationFrame(update);
+}
+update();
+</script>
+</body>
+</html>
